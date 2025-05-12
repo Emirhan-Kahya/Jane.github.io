@@ -5,6 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Romantic Heart Lines</title>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
         body {
             margin: 0;
             display: flex;
@@ -13,18 +19,36 @@
             min-height: 100vh;
             background: #000;
             overflow: hidden;
+            position: fixed;
+            width: 100%;
+            height: 100%;
         }
+
         canvas {
             background: transparent;
             position: absolute;
-        }
-        #space {
-            position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
+            touch-action: none;
+        }
+
+        #space {
             z-index: -1;
+        }
+
+        @media (max-width: 768px) {
+            canvas {
+                touch-action: none;
+                -webkit-touch-callout: none;
+                -webkit-user-select: none;
+                -khtml-user-select: none;
+                -moz-user-select: none;
+                -ms-user-select: none;
+                user-select: none;
+                -webkit-tap-highlight-color: transparent;
+            }
         }
     </style>
 </head>
@@ -32,10 +56,19 @@
     <canvas id="space"></canvas>
     <canvas id="heartCanvas"></canvas>
     <script>
+        // Responsive canvas setup
+        function setupCanvas(canvas) {
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            return dpr;
+        }
+
         const spaceCanvas = document.getElementById('space');
         const spaceCtx = spaceCanvas.getContext('2d');
-        spaceCanvas.width = window.innerWidth;
-        spaceCanvas.height = window.innerHeight;
+        let spaceDpr = setupCanvas(spaceCanvas);
+        spaceCtx.scale(spaceDpr, spaceDpr);
 
         class Star {
             constructor() {
@@ -43,8 +76,8 @@
             }
 
             reset() {
-                this.x = Math.random() * spaceCanvas.width;
-                this.y = Math.random() * spaceCanvas.height;
+                this.x = Math.random() * (spaceCanvas.width / spaceDpr);
+                this.y = Math.random() * (spaceCanvas.height / spaceDpr);
                 this.size = Math.random() * 1.5;
                 this.speed = 0.1 + Math.random() * 0.3;
                 this.brightness = Math.random();
@@ -54,7 +87,7 @@
             update() {
                 this.brightness = 0.5 + Math.sin(Date.now() * this.speed * 0.001) * 0.3;
                 this.y += this.speed * 0.2;
-                if (this.y > spaceCanvas.height) this.reset();
+                if (this.y > spaceCanvas.height / spaceDpr) this.reset();
             }
 
             draw() {
@@ -68,18 +101,21 @@
         const stars = Array(200).fill().map(() => new Star());
 
         function animateSpace() {
+            const width = spaceCanvas.width / spaceDpr;
+            const height = spaceCanvas.height / spaceDpr;
+
             spaceCtx.fillStyle = 'rgba(0, 0, 0, 0.2)';
-            spaceCtx.fillRect(0, 0, spaceCanvas.width, spaceCanvas.height);
+            spaceCtx.fillRect(0, 0, width, height);
 
             const gradient = spaceCtx.createRadialGradient(
-                spaceCanvas.width/2, spaceCanvas.height/2, 0,
-                spaceCanvas.width/2, spaceCanvas.height/2, spaceCanvas.width/2
+                width/2, height/2, 0,
+                width/2, height/2, width/2
             );
             gradient.addColorStop(0, 'rgba(50, 0, 10, 0.05)');
             gradient.addColorStop(0.5, 'rgba(30, 0, 5, 0.03)');
             gradient.addColorStop(1, 'rgba(10, 0, 2, 0)');
             spaceCtx.fillStyle = gradient;
-            spaceCtx.fillRect(0, 0, spaceCanvas.width, spaceCanvas.height);
+            spaceCtx.fillRect(0, 0, width, height);
 
             stars.forEach(star => {
                 star.update();
@@ -93,9 +129,8 @@
         const ctx = canvas.getContext('2d', {
             alpha: true
         });
-
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
+        let dpr = setupCanvas(canvas);
+        ctx.scale(dpr, dpr);
 
         function heartX(t) {
             return 16 * Math.pow(Math.sin(t), 3);
@@ -128,26 +163,28 @@
             }
 
             getSpawnPoint() {
-                const margin = 100;
+                const width = canvas.width / dpr;
+                const height = canvas.height / dpr;
+                const margin = Math.min(width, height) * 0.1;
                 const side = Math.floor(Math.random() * 4);
                 let x, y;
                 
                 switch(side) {
                     case 0:
-                        x = Math.random() * (canvas.width + 2 * margin) - margin;
+                        x = Math.random() * (width + 2 * margin) - margin;
                         y = -margin;
                         break;
                     case 1:
-                        x = canvas.width + margin;
-                        y = Math.random() * (canvas.height + 2 * margin) - margin;
+                        x = width + margin;
+                        y = Math.random() * (height + 2 * margin) - margin;
                         break;
                     case 2:
-                        x = Math.random() * (canvas.width + 2 * margin) - margin;
-                        y = canvas.height + margin;
+                        x = Math.random() * (width + 2 * margin) - margin;
+                        y = height + margin;
                         break;
                     case 3:
                         x = -margin;
-                        y = Math.random() * (canvas.height + 2 * margin) - margin;
+                        y = Math.random() * (height + 2 * margin) - margin;
                         break;
                 }
                 return {x, y};
@@ -162,18 +199,21 @@
                 this.speed = 0.008 + Math.random() * 0.01;
                 this.baseSpeed = this.speed;
                 this.phase = Math.random() * Math.PI * 2;
-                this.size = 0.8 + Math.random() * 0.4;
-                this.amplitude = 5 + Math.random() * 10;
+                this.size = (0.8 + Math.random() * 0.4) * (canvas.width / (1920 * dpr));
+                this.amplitude = (5 + Math.random() * 10) * (canvas.width / (1920 * dpr));
                 this.danceSpeed = 0.01 + Math.random() * 0.02;
                 this.history = [];
                 
                 if (!isInitial) {
                     this.active = true;
-                    this.delay = performance.now();  // Reset delay to current time
+                    this.delay = performance.now();
                 }
             }
 
             update(time) {
+                const width = canvas.width / dpr;
+                const height = canvas.height / dpr;
+
                 if (transitionState === 'initial') {
                     if (!this.active && time > this.delay) {
                         this.active = true;
@@ -201,8 +241,8 @@
                                 break;
                         }
 
-                        const targetX = heartX(this.t) * this.scale + canvas.width/2 + wobbleX;
-                        const targetY = heartY(this.t) * this.scale + canvas.height/2 + wobbleY;
+                        const targetX = heartX(this.t) * this.scale * (width / 1920) + width/2 + wobbleX;
+                        const targetY = heartY(this.t) * this.scale * (height / 1080) + height/2 + wobbleY;
 
                         const dx = targetX - this.x;
                         const dy = targetY - this.y;
@@ -210,24 +250,24 @@
 
                         if (distance < 1 && this.history.length >= this.maxHistory) {
                             const distanceFromCenter = Math.sqrt(
-                                Math.pow(this.x - canvas.width/2, 2) + 
-                                Math.pow(this.y - canvas.height/2, 2)
+                                Math.pow(this.x - width/2, 2) + 
+                                Math.pow(this.y - height/2, 2)
                             );
                             
-                            if (distanceFromCenter < this.scale * 20) {
+                            if (distanceFromCenter < this.scale * (width / 1920) * 20) {
                                 this.reset();
                                 return;
                             }
                         }
 
                         const distanceFromCenter = Math.sqrt(
-                            Math.pow(this.x - canvas.width/2, 2) + 
-                            Math.pow(this.y - canvas.height/2, 2)
+                            Math.pow(this.x - width/2, 2) + 
+                            Math.pow(this.y - height/2, 2)
                         );
                         
-                        const maxSpeed = 8;
-                        const minSpeed = 2;
-                        const speedFactor = Math.max(0.2, Math.min(1, distanceFromCenter / (canvas.width * 0.4)));
+                        const maxSpeed = 8 * (width / 1920);
+                        const minSpeed = 2 * (width / 1920);
+                        const speedFactor = Math.max(0.2, Math.min(1, distanceFromCenter / (width * 0.4)));
                         const speed = minSpeed + (maxSpeed - minSpeed) * speedFactor;
 
                         this.x += (dx / distance) * speed;
@@ -240,24 +280,22 @@
                     }
                 } else if (transitionState === 'imploding') {
                     const timeSinceExplosion = time - explosionTime;
-                    if (timeSinceExplosion < 500) { // First phase: implode
+                    if (timeSinceExplosion < 500) {
                         const progress = timeSinceExplosion / 500;
-                        // Save last position before implosion starts
                         if (progress < 0.1) {
                             this.lastX = this.x;
                             this.lastY = this.y;
                         }
                         
-                        // Move to center
-                        const targetX = canvas.width/2;
-                        const targetY = canvas.height/2;
+                        const targetX = width/2;
+                        const targetY = height/2;
                         const implosionProgress = Math.pow(progress, 0.5);
                         
                         this.x = this.lastX + (targetX - this.lastX) * implosionProgress;
                         this.y = this.lastY + (targetY - this.lastY) * implosionProgress;
                     } else {
                         transitionState = 'exploding';
-                        explosionTime = time; // Reset explosion time for next phase
+                        explosionTime = time;
                     }
                 } else if (transitionState === 'exploding') {
                     const timeSinceExplosion = time - explosionTime;
@@ -265,46 +303,45 @@
                         const progress = timeSinceExplosion / 600;
                         if (particles.indexOf(this) % 8 === 0) {
                             const screenDiagonal = Math.sqrt(
-                                (canvas.width * canvas.width) + 
-                                (canvas.height * canvas.height)
+                                (width * width) + 
+                                (height * height)
                             ) * 1.2;
                             
                             const explosionProgress = Math.pow(progress, 0.6);
                             this.explosionRadius = screenDiagonal * explosionProgress;
                             
                             const angle = this.explosionAngle + (explosionProgress * Math.PI * 0.5);
-                            this.x = canvas.width/2 + Math.cos(angle) * this.explosionRadius;
-                            this.y = canvas.height/2 + Math.sin(angle) * this.explosionRadius;
+                            this.x = width/2 + Math.cos(angle) * this.explosionRadius;
+                            this.y = height/2 + Math.sin(angle) * this.explosionRadius;
                         } else {
-                            const spread = 20 * progress;
-                            this.x = canvas.width/2 + (Math.random() - 0.5) * spread;
-                            this.y = canvas.height/2 + (Math.random() - 0.5) * spread;
+                            const spread = 20 * progress * (width / 1920);
+                            this.x = width/2 + (Math.random() - 0.5) * spread;
+                            this.y = height/2 + (Math.random() - 0.5) * spread;
                         }
                     } else {
                         transitionState = 'forming';
-                        // Position particles well outside the screen for heart formation
                         const angle = Math.random() * Math.PI * 2;
                         const screenDiagonal = Math.sqrt(
-                            (canvas.width * canvas.width) + 
-                            (canvas.height * canvas.height)
+                            (width * width) + 
+                            (height * height)
                         ) * 1.2;
-                        this.x = canvas.width/2 + Math.cos(angle) * screenDiagonal;
-                        this.y = canvas.height/2 + Math.sin(angle) * screenDiagonal;
+                        this.x = width/2 + Math.cos(angle) * screenDiagonal;
+                        this.y = height/2 + Math.sin(angle) * screenDiagonal;
                     }
                 } else if (transitionState === 'forming') {
-                    const targetX = canvas.width/2;
-                    const targetY = canvas.height/2;
+                    const targetX = width/2;
+                    const targetY = height/2;
                     const dx = targetX - this.x;
                     const dy = targetY - this.y;
                     const distance = Math.sqrt(dx * dx + dy * dy);
                     
-                    if (distance < 5) {
+                    if (distance < 5 * (width / 1920)) {
                         transitionState = 'final';
                         const particleIndex = particles.indexOf(this);
                         const totalParticles = particles.length;
                         this.t = (particleIndex / totalParticles) * Math.PI * 2;
                     } else {
-                        const speed = Math.max(20, distance * 0.2);
+                        const speed = Math.max(20, distance * 0.2) * (width / 1920);
                         this.x += (dx / distance) * speed;
                         this.y += (dy / distance) * speed;
                     }
@@ -313,15 +350,15 @@
                     if (this.t > Math.PI * 2) this.t = 0;
                     
                     this.phase += 0.05;
-                    const wobbleAmount = 8;
+                    const wobbleAmount = 8 * (width / 1920);
                     const wobbleX = Math.cos(this.phase) * wobbleAmount;
                     const wobbleY = Math.sin(this.phase * 1.5) * wobbleAmount;
                     
-                    const heartScale = this.scale * 1.2;
-                    const baseX = heartX(this.t) * heartScale + canvas.width/2;
-                    const baseY = heartY(this.t) * heartScale + canvas.height/2;
+                    const heartScale = this.scale * 1.2 * (width / 1920);
+                    const baseX = heartX(this.t) * heartScale + width/2;
+                    const baseY = heartY(this.t) * heartScale + height/2;
                     
-                    const randomOffset = 5;
+                    const randomOffset = 5 * (width / 1920);
                     const offsetX = (Math.random() - 0.5) * randomOffset;
                     const offsetY = (Math.random() - 0.5) * randomOffset;
                     
@@ -332,8 +369,8 @@
                     this.x += (targetX - this.x) * transitionSpeed;
                     this.y += (targetY - this.y) * transitionSpeed;
 
-                    this.glow = 15;
-                    this.size = 0.8 + Math.random() * 0.4;
+                    this.glow = 15 * (width / 1920);
+                    this.size = (0.8 + Math.random() * 0.4) * (width / 1920);
                     this.maxHistory = 40;
                     this.baseHue = 0;
 
@@ -415,12 +452,16 @@
         const totalSpawnDuration = 8000;
         const spawnInterval = totalSpawnDuration / numParticles;
 
-        for (let i = 0; i < numParticles; i++) {
-            particles.push(new Particle(20, i * spawnInterval));
+        function initParticles() {
+            particles.length = 0;
+            const baseScale = Math.min(canvas.width / dpr / 1920, canvas.height / dpr / 1080) * 20;
+            for (let i = 0; i < numParticles; i++) {
+                particles.push(new Particle(baseScale, i * spawnInterval));
+            }
         }
 
         function animate(time) {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
 
             particles.forEach(particle => {
                 particle.update(time);
@@ -430,26 +471,33 @@
             requestAnimationFrame(animate);
         }
 
-        animate(0);
-        animateSpace();
+        function handleResize() {
+            spaceDpr = setupCanvas(spaceCanvas);
+            spaceCtx.scale(spaceDpr, spaceDpr);
+            stars.forEach(star => star.reset());
 
-        canvas.addEventListener('click', (e) => {
+            dpr = setupCanvas(canvas);
+            ctx.scale(dpr, dpr);
+            initParticles();
+        }
+
+        function handleInteraction(e) {
             if (transitionState !== 'initial') return;
 
-            // Calculate if click is on any particle
-            let clickedOnHeart = false;
-            const clickX = e.clientX;
-            const clickY = e.clientY;
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX || e.touches[0].clientX) - rect.left;
+            const y = (e.clientY || e.touches[0].clientY) - rect.top;
+            const scaledX = x * dpr;
+            const scaledY = y * dpr;
 
-            // Check each particle's position
+            let clickedOnHeart = false;
             particles.forEach(particle => {
                 if (!clickedOnHeart) {
-                    const dx = clickX - particle.x;
-                    const dy = clickY - particle.y;
+                    const dx = scaledX - particle.x * dpr;
+                    const dy = scaledY - particle.y * dpr;
                     const distance = Math.sqrt(dx * dx + dy * dy);
                     
-                    // If click is near any particle's position
-                    if (distance < 20) {
+                    if (distance < 20 * dpr) {
                         clickedOnHeart = true;
                     }
                 }
@@ -459,14 +507,17 @@
                 transitionState = 'imploding';
                 explosionTime = performance.now();
             }
-        });
+        }
 
-        window.addEventListener('resize', () => {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-            spaceCanvas.width = window.innerWidth;
-            spaceCanvas.height = window.innerHeight;
-        });
+        // Event listeners
+        window.addEventListener('resize', handleResize);
+        canvas.addEventListener('click', handleInteraction);
+        canvas.addEventListener('touchstart', handleInteraction);
+
+        // Initialize
+        initParticles();
+        animate(0);
+        animateSpace();
     </script>
 </body>
 </html> 
